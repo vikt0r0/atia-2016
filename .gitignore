@@ -1,0 +1,10 @@
+.DS_store
+
+*.log
+*.aux
+*.out
+*.synctex.gz
+
+*~
+
+code/.idea

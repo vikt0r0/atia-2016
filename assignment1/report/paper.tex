@@ -1,0 +1,172 @@
+\documentclass[12pt]{article}
+
+% This first part of the file is called the PREAMBLE. It includes
+% customizations and command definitions. The preamble is everything
+% between \documentclass and \begin{document}.
+
+\usepackage[margin=1in]{geometry}  % set the margins to 1in on all sides
+\usepackage{graphicx}              % to include figures
+\usepackage{amsmath}               % great math stuff
+\usepackage{amsfonts}              % for blackboard bold, etc
+\usepackage{amsthm}                % better theorem environments
+\usepackage{listings}
+\usepackage{bbm}
+\usepackage{hyperref}
+
+
+% various theorems, numbered by section
+
+\newtheorem{thm}{Theorem}[section]
+\newtheorem{lem}[thm]{Lemma}
+\newtheorem{prop}[thm]{Proposition}
+\newtheorem{cor}[thm]{Corollary}
+\newtheorem{conj}[thm]{Conjecture}
+
+\DeclareMathOperator{\id}{id}
+
+\newcommand{\bd}[1]{\mathbf{#1}}  % for bolding symbols
+\newcommand{\RR}{\mathbb{R}}      % for Real numbers
+\newcommand{\ZZ}{\mathbb{Z}}      % for Integers
+\newcommand{\col}[1]{\left[\begin{matrix} #1 \end{matrix} \right]}
+\newcommand{\comb}[2]{\binom{#1^2 + #2^2}{#1+#2}}
+
+\newcommand{\abs}[1]{\lvert#1\rvert}
+\newcommand{\norm}[1]{\lVert#1\rVert}
+
+\lstset{ % General setup for the package
+    language={[LaTeX]TeX},
+    basicstyle=\footnotesize\sffamily,
+    tabsize=4,
+    columns=fixed,
+    keepspaces,
+    commentstyle=\color{red},
+    keywordstyle=\color{blue},
+    xleftmargin=.1\textwidth,
+    xrightmargin=.1\textwidth
+}
+
+\begin{document}
+
+
+\nocite{*}
+
+\title{Linear Regression and Logistic Regression}
+
+\author{Viktor Hansen \\ 
+Department of Computer Science \\
+University of Copenhagen}
+
+\maketitle
+
+\begin{abstract}
+  This is my submission for the second third assignment for the Machine Learning course offered at The Department of Computer Science, Uni. Copenhagen.
+\end{abstract}
+
+
+\section*{Preface}
+Solutions for all tasks in the programming part were completed in MATLAB, and generic solutions were attempted where possible. The implementation was compiled and tested with the R2015b distribution of MATLAB. The main script is found in \path{code/main.m}, and running it will reproduce the results presented in this report. The output of running the program can be found in.
+
+References to locations of source files in this report will be assumed to have \texttt{code/} implicitly prepended; that is \path{functions/my_function.m} is to be found in \path{code/function/my_function.m} etc.
+
+\section{Logistic Regression}
+\subsection{Cross-entropy error measure}
+Recall that the likelihood function is defined as
+\begin{align}
+\label{eqn:likelihood}\mathbb{P}\left\{ \, y \, | \, \mathbf{x} \, \right\} =
+\begin{cases} 
+      h(\mathbf{x}) & \text{for} \;\, y=+1 \\
+      1-h(\mathbf{x}) & \text{for} \;\, y=-1
+   \end{cases}
+\end{align}
+If we rewrite (\ref{eqn:likelihood}) in terms of indicator functions we get
+\begin{align}
+\label{eqn:likelihood_ind}\mathbb{P}\left\{ \, y \, | \, \mathbf{x} \, \right\} = \mathbbm{1}_{y\in\left\{+1\right\}}h(\mathbf{x}) + \mathbbm{1}_{y\in\left\{-1\right\}}(1-h(\mathbf{x}))
+\end{align}
+Next, recall that maximizing the simultaneous likelihood is equivalent to minimizing the quantity on the following RHS
+\begin{align}
+\label{eqn:likelihood_max_min}E_{\text{in}}(\textbf{w}) = -\frac{1}{N}\ln\left( \prod^{N}_{i=1} \mathbb{P}\left\{ \, y_{i} \, | \, \mathbf{x}_{i} \, \right\} \right) = \frac{1}{N} \sum^{N}_{i=1} \ln \left( \frac{1}{\mathbb{P}\left\{ \, y_{i} \, | \, \mathbf{x}_{i} \, \right\}} \right)
+\end{align}
+Now, in the case that $y_{i} = +1$, then $\mathbb{P}\left\{ \, y_{i} \, | \, \mathbf{x}_{i} \, \right\} = h(\mathbf{x}_{i})$ and similarly, when $y_{i} = -1$, then $\mathbb{P}\left\{ \, y_{i} \, | \, \mathbf{x}_{i} \, \right\} = 1 - h(\mathbf{x}_{i})$. Substituting (\ref{eqn:likelihood_ind}) into (\ref{eqn:likelihood_max_min}) means that each subterm of the summation in (\ref{eqn:likelihood_max_min}) can be written as
+\begin{align}
+\ln \left( \frac{1}{\mathbb{P}\left\{ \, y_{i} \, | \, \mathbf{x}_{i} \, \right\}} \right) &= \ln \left(\frac{1}{\mathbbm{1}_{y\in\left\{+1\right\}}h(\mathbf{x}_{i}) + \mathbbm{1}_{y\in\left\{-1\right\}}(1-h(\mathbf{x}_{i}))} \right) \\
+&= \mathbbm{1}_{y\in\left\{+1\right\}} \ln \left( \frac{1}{h(\mathbf{x}_{i})}\right)+ \mathbbm{1}_{y\in\left\{-1\right\}} \ln \left(\frac{1}{1-h(\mathbf{x}_{i})}\right) \label{eqn:likelihood_split}
+\end{align}
+which shows part (a), i.e.
+\begin{align*}
+E_{\text{in}}(\textbf{w}) &= \frac{1}{N} \sum^{N}_{i=1} \ln \left( \frac{1}{\mathbb{P}\left\{ \, y_{i} \, | \, \mathbf{x}_{i} \, \right\}} \right) \\
+&=\frac{1}{N} \sum^{N}_{i=1} \mathbbm{1}_{y\in\left\{+1\right\}} \ln \left( \frac{1}{h(\mathbf{x}_{i})}\right)+ \mathbbm{1}_{y\in\left\{-1\right\}} \ln \left(\frac{1}{1-h(\mathbf{x}_{i})}\right)
+\end{align*}
+To show (b) we let $h(\mathbf{x}) = \theta(\textbf{w}^{\text{T}} \mathbf{x}) = e^{\textbf{w}^{\text{T}} \mathbf{x}}/(1+e^{\textbf{w}^{\text{T}} \mathbf{x}})$ and substitute $h$ into (\ref{eqn:likelihood_split}) so
+\begin{align*}
+\mathbbm{1}_{y\in\left\{+1\right\}} \ln \left( \frac{1}{\theta(\textbf{w}^{\text{T}} \mathbf{x})}\right)+ \mathbbm{1}_{y\in\left\{-1\right\}} \ln \left(\frac{1}{1-\theta(\textbf{w}^{\text{T}} \mathbf{x})}\right)
+\end{align*}
+As $1-\theta(s) = \theta(-s)$ we get
+\begin{align*}
+\mathbbm{1}_{y\in\left\{+1\right\}} \ln \left( \frac{1}{\theta(\textbf{w}^{\text{T}} \mathbf{x})}\right)+ \mathbbm{1}_{y\in\left\{-1\right\}} \ln \left(\frac{1}{\theta(-\textbf{w}^{\text{T}} \mathbf{x})}\right) = \ln \left( \frac{1}{\theta(y_{i} \; \textbf{w}^{\text{T}} \mathbf{x})}\right)
+\end{align*}
+And hence
+\begin{align}
+\label{eqn:likelihood_theta}E_{\text{in}}(\textbf{w})=\frac{1}{N} \sum^{N}_{i=1} \ln \left( \frac{1}{\theta(y_{i} \; \textbf{w}^{\text{T}} \mathbf{x})}\right)=\frac{1}{N} \sum^{N}_{i=1} \ln \left( 1 + e^{-y_{i}\textbf{w}^{\text{T}}\textbf{x}_{i}}\right)
+\end{align}
+Equation (\ref{eqn:likelihood_theta}) shows that minimizing the in-sample error of part a is equivalent to minimizing the one in 3.9.
+
+\subsection{Logistic Regression Loss Gradient}
+We first determine the gradient of the in-sample loss function
+\begin{align*}
+\nabla E_{\text{in}}(\textbf{w}) = \frac{\partial}{\partial \textbf{w}} \left[ \frac{1}{N} \sum^{N}_{i=1} \ln \left( 1 + e^{-y_{i}\textbf{w}^{\text{T}}\textbf{x}_{i}}\right) \right] = \frac{1}{N} \sum^{N}_{i=1} \frac{\partial}{\partial \textbf{w}} \left[ \ln \left( 1 + e^{-y_{i}\textbf{w}^{\text{T}}\textbf{x}_{i}}\right) \right] 
+\end{align*}
+Letting $f(x)=\ln(x)$ and $g(\textbf{w}) = 1 + e^{-y_{i}\textbf{w}^{\text{T}}\textbf{x}_{i}}$ and applying the chain rule for gradients, we get
+\begin{align*}
+\frac{\partial}{\partial \textbf{w}} \left[ \ln \left( 1 + e^{-y_{i}\textbf{w}^{\text{T}}\textbf{x}_{i}}\right) \right] = \nabla(f \circ g)(\textbf{w}) = f'(g(\textbf{w})) \nabla g(\textbf{w})
+\end{align*}
+We have $f'(x) = \frac{\text{d}}{{\text{d}x}}\left(\ln(x)\right) = \frac{1}{x}$, so $f'(g(\textbf{w})) = 1/(1 + e^{-y_{i}\textbf{w}^{\text{T}}\textbf{x}_{i}})$ and
+\begin{align*}
+\nabla g(\textbf{w}) = \frac{\partial}{\partial \textbf{w}} \left[ 1 + e^{-y_{i}\textbf{w}^{\text{T}}\textbf{x}_{i}} \right] = \frac{\partial}{\partial \textbf{w}} \left[ e^{-y_{i}\textbf{w}^{\text{T}}\textbf{x}_{i}} \right] = e^{-y_{i}\textbf{w}^{\text{T}}\textbf{x}_{i}} \cdot (-y_{i}\textbf{x}_{i})
+\end{align*}
+The last step follows from the chain rule. Thus
+\begin{align*}
+f'(g(\textbf{w})) \nabla g(\textbf{w}) &= \frac{-y_{i}\textbf{x}_{i} e^{-y_{i}\textbf{w}^{\text{T}}\textbf{x}_{i}}
+}{1 + e^{-y_{i}\textbf{w}^{\text{T}}\textbf{x}_{i}}} \\
+&= \frac{-y_{i}\textbf{x}_{i} (e^{-y_{i}\textbf{w}^{\text{T}}\textbf{x}_{i}})/(e^{-y_{i}\textbf{w}^{\text{T}}\textbf{x}_{i}})
+}{(1 + e^{-y_{i}\textbf{w}^{\text{T}}\textbf{x}_{i}}) / (e^{-y_{i}\textbf{w}^{\text{T}}\textbf{x}_{i}})} \\
+&= \frac{-y_{i}\textbf{x}_{i}
+}{1 + e^{y_{i}\textbf{w}^{\text{T}}\textbf{x}_{i}}}
+\end{align*}
+And
+\begin{align*}
+\nabla E_{\text{in}}(\textbf{w}) = \frac{1}{N} \sum^{N}_{i=1} \frac{-y_{i}\textbf{x}_{i}
+}{1 + e^{y_{i}\textbf{w}^{\text{T}}\textbf{x}_{i}}} = \frac{1}{N} \sum^{N}_{i=1} -y_{i}\textbf{x}_{i} \; \theta(-y_{i} \textbf{w}^{\text{T}} \textbf{x}_{i})
+\end{align*}
+To show that a misclassified sample contributes more to the gradient than, we consider any sample $(\textbf{x}, y)$. The contribution to the gradient from this sample is given by the term $\norm{-y \; \textbf{x} \, \theta(-y \textbf{w}^{\text{T}} \textbf{x})} = \norm{x} \cdot \abs{-y \, \theta(-y \, \textbf{w}^{\text{T}} \textbf{x})}$. Note that the magnitude of the contribution to the gradient is proportional to $\abs{-y \, \theta(-y \, \textbf{w}^{\text{T}} \textbf{x})} = \abs{\theta(-y \, \textbf{w}^{\text{T}} \textbf{x})}$. We thus need to consider the cases in which a sample is misclassified as a -1 and a +1, and show that the contribution to the gradient is larger than those of the correctly classified ones in both cases. That is
+\begin{align*}
+\abs{\theta(\textbf{w}^{\text{T}} \textbf{x})} > \abs{\theta(-\textbf{w}^{\text{T}} \textbf{x})} = \abs{1-\theta(\textbf{w}^{\text{T}} \textbf{x})}
+\end{align*}
+when the sample is misclassified as $-1$ and
+\begin{align*}
+\abs{\theta(\textbf{w}^{\text{T}} \textbf{x})} = \abs{1-\theta(\textbf{w}^{\text{T}} \textbf{x})} > \abs{\theta(\textbf{w}^{\text{T}} \textbf{x})}
+\end{align*}
+In the first case, the sample is misclassified as $+1$, meaning that $\theta(\textbf{w}^{\text{T}} \textbf{x}) > \frac{1}{2}$, and thus the contribution is greater than that of the correct classification, as $\abs{\theta(\textbf{w}^{\text{T}} \textbf{x})} > \abs{1-\theta(\textbf{w}^{\text{T}} \textbf{x})}$.
+
+In the second case, the sample is misclassified as $-1$ meaning that $\theta(\textbf{w}^{\text{T}} \textbf{x}) < \frac{1}{2}$, and by the same logic as before, the contribution is greater than of the correct classification.
+
+\subsection{Logistic Regression Implementation}
+The logistic regression method was implemented in \path{logistic_regression.m}. An initial choice of $\eta_{0} = 1.0$ is updated so $\eta_{t+1} = \eta_{t}\norm{\nabla E_{\text{in}}}$ for at most 10000 iterations of gradient descent. The gradient descent loop terminates when $\nabla E_{\text{in}}(\textbf{w}) < 0.0001$. Initial values for $\textbf{w}$ were drawn randomly from a normal distribution with $\mu = 0$ and $\sigma = 0.01$ as recommended by the book. Classification with the weight vector $\textbf{w} = \left[ 8.9595, -159.8700 \right]^{\text{T}}$ yields a training error reported by the program of $0.0161$ and a test error of $0.0385$.
+
+\section{Linear Least Squares}
+We wish to fit the model, $f(x) = ax^2 + bx$, of a parabola passing through the origin.
+\begin{enumerate}
+\item Linear least squares was used in order to determine the projection of $\textbf{w}=[a \; b]^{\text{T}}$ onto the column space of $X$. The estimated model parameters were $[a \; b]^{\text{T}} = [-0.96 \; \; 9.76]^{\text{T}}$.
+
+\item In order to estimate the distance from the cannon where Baron von Münchhausen will fall down, we solve $0 = -0.96x^2+9.76x = x\cdot(-0.96x+9.76)$. That is, the equation is satisfied when $x=0 \; \lor \; -0.96x+9.76 = 0$. We are only interested in the second solution, however, as this is the one that determines where the Baron will land. Solving for $x$ yields $x=\frac{9.76}{0.96}=10.17$.
+
+\item The plot of the Barons trajectory can be seen in Figure \ref{fig:baron}.
+\end{enumerate}
+
+\begin{figure}[!hbt]
+    \centering
+    \includegraphics[width=0.7\textwidth]{img/fit.png}
+    \caption{Plot of the Baron's trajectory, reported data and position of the cannon.}
+    \label{fig:baron}
+\end{figure}
+
+\end{document}

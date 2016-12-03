@@ -1,6 +1,10 @@
-function [ H ] = compute( r, s, od )
-%COMPUTE Summary of this function goes here
-%   Detailed explanation goes here
+function [ H ] = results( r, s, od )
+%RESULTS Get the assignment 1 results
+%   Returns a struct with original, rectified and bitmap data as
+%   well as error measures. r is the dataset to use, r \in [1, 2]
+%   s is the image to use, s \in [1...5] and od \in [true, false]
+%   enables outlier detection.
+
     %% Configuration
 
     % Dataset, i \in [1, 2]
@@ -108,8 +112,7 @@ function [ H ] = compute( r, s, od )
     % Save images
     H.img_ref = imread(strcat('images/im', int2str(i), int2str(1), '.jpg'));
     H.img_orig = imread(strcat('images/im', int2str(i), int2str(j), '.jpg'));
-    l = graythresh(H.img_ref);
-    H.img_ref_bm = im2bw(H.img_ref, l);
+    H.img_ref_bm = create_bitmap(H.img_ref, H.pts_ref);
 
     %% Image rectification
 
@@ -134,8 +137,7 @@ function [ H ] = compute( r, s, od )
 
     % Save images
     H.img_rect = I_rect;
-    level = graythresh(I_rect);
-    H.img_rect_bm = im2bw(I_rect, level);
+    H.img_rect_bm = create_bitmap(I_rect, H.pts_rect);
 
     %% Error measures
 

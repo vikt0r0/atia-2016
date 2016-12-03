@@ -2,7 +2,17 @@
 
 close all; clear all;
 
-H = 
+%% Get results
+
+H = results(2,5,true);
+
+%% Plot reference bitmap with reference correspondance points
+
+figure;
+hold on;
+imagesc(H.img_ref_bm);
+plot(H.pts_ref(2,:), H.pts_ref(1,:), 'oc');
+hold off;
 
 %% Plot reference bitmap with rectified correspondance points
 
